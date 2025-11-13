@@ -1,0 +1,33 @@
+[project]
+name = "antest_demo"
+version = "0.1.0"
+description = "A Flet example application."
+requires-python = ">=3.9"
+authors = [
+    { name = "Fabian", email = "fector101@yahoo.com" }
+]
+
+dependencies = [
+  "flet==0.27.5",
+]
+
+# Docs: https://flet.dev/docs/publish
+[tool.flet]
+product = "Antest demo"
+company = "Flet"
+copyright = "Copyright (C) 2025 by Flet"
+
+[tool.poetry]
+package-mode = false
+
+[tool.flet.app]
+path = "src"
+
+[tool.flet.android.permission]
+"android.permission.POST_NOTIFICATIONS" = true
+
+[tool.flet.android]
+bundle_id = "com.mycompany.antest_demo"
+dependencies = [
+  "pyjnius","https://github.com/Fector101/android_notify/archive/without-androidx.zip"
+]

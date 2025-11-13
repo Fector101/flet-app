@@ -31,3 +31,6 @@ bundle_id = "com.mycompany.antest_demo"
 dependencies = [
   "pyjnius","https://github.com/Fector101/android_notify/archive/without-androidx.zip"
 ]
+
+[tool.flet.flutter.pubspec.dependency_overrides]
+webview_flutter_android = "4.10.1"

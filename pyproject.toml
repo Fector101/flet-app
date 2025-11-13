@@ -33,4 +33,4 @@ dependencies = [
 ]
 
 [tool.flet.flutter.pubspec.dependency_overrides]
-webview_flutter_android = "3.6"
+webview_flutter_android = "3.6.0"

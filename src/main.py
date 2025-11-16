@@ -2,7 +2,7 @@ import os,traceback,io,sys,unittest
 import flet as ft
 from contextlib import redirect_stdout
 from android_notify.core import get_app_root_path,asks_permission_if_needed
-from android_notify import Notification, send_notification
+from android_notify import Notification
 md1=''
 i=0
 def main(page: ft.Page):
@@ -44,6 +44,7 @@ def main(page: ft.Page):
     def asks_permission_if_needed_(e):
         asks_permission_if_needed()
     def see_packaged_icon(e):
+        from new_icon import send_notification
         send_notification("","",)
 
 

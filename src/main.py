@@ -142,12 +142,11 @@ def main(page: ft.Page):
     # ---------------------------------------------------
     page.add(
         ft.Column([
-            ft.OutlinedButton("Send Basic Notification", on_click=send_basic),
-            ft.OutlinedButton("Refresh Log Output", on_click=refresh_console),
-            ft.OutlinedButton("Run Tests", on_click=run_tests),
             ft.OutlinedButton("Check Permission", on_click=check_permission),
             ft.OutlinedButton("Ask Permission If Needed", on_click=lambda _: asks_permission_if_needed()),
-            ft.OutlinedButton("See Packaged Icon", on_click=see_packaged_icon),
+            ft.OutlinedButton("Send Basic Notification", on_click=send_basic),
+            ft.OutlinedButton("Run Tests", on_click=run_tests),
+            ft.OutlinedButton("Refresh Log Output", on_click=refresh_console),
         ], expand=False)
     )
 

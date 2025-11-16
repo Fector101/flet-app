@@ -1,54 +1,89 @@
-import os,traceback,io,sys,unittest
+import os, traceback, io, sys, unittest
 import flet as ft
 from contextlib import redirect_stdout
-from android_notify.core import get_app_root_path,asks_permission_if_needed
+from android_notify.core import get_app_root_path, asks_permission_if_needed
 from android_notify import Notification
-md1=''
-i=0
+
+# Global log mirror
+md_cache = ""
+counter = 0
+
+
 def main(page: ft.Page):
     page.scroll = ft.ScrollMode.ADAPTIVE
-    page.add(ft.Text("1111111111 Android Notify Test Results", size=24, weight=ft.FontWeight.BOLD))
-    logs_path=os.path.join(get_app_root_path(),'last.txt')
-    mdObj = ft.Markdown(
-        md1,
+    page.padding = 20
+
+    page.add(ft.Text(
+        "Android Notify Test Panel",
+        size=28,
+        weight=ft.FontWeight.BOLD,
+    ))
+
+    # Path to log file
+    try:
+        logs_path = os.path.join(get_app_root_path(), "last.txt")
+    except Exception:
+        logs_path = "/sdcard/last.txt"   # fallback for safety
+
+    # Markdown output viewer
+    md_view = ft.Markdown(
+        md_cache,
         selectable=True,
         extension_set=ft.MarkdownExtensionSet.GITHUB_WEB,
         on_tap_link=lambda e: page.launch_url(e.data),
+        expand=True,
     )
-    page.add(mdObj)
-    def console(a):
-        global md1,i
-        i+=1
-        print('Testing print visibility: ',i,'\n')
+    page.add(md_view)
+
+    # ---------------------------------------------------
+    # UTIL: Refresh console output
+    # ---------------------------------------------------
+    def refresh_console(_):
+        global md_cache, counter
+        counter += 1
+        print("This is a print statement:", counter,"\n")
+
         try:
-            if os.getenv("FLET_APP_CONSOLE"):
-                with open(os.getenv("FLET_APP_CONSOLE"), "r") as f:
-                    md1 = f.read()
-                    mdObj.value = md1
+            # APP console output (if running inside Flet debug runner)
+            flet_console = os.getenv("FLET_APP_CONSOLE")
+            if flet_console and os.path.exists(flet_console):
+                with open(flet_console, "r") as f:
+                    md_cache = f.read()
 
-            with open(logs_path, 'r') as logf:
-                mdObj.value = logf.read() + md1
+            # android-notify log file
+            if os.path.exists(logs_path):
+                with open(logs_path, "r") as f:
+                    md_cache = f.read() + "\n\n" + md_cache
+
+            md_view.value = md_cache
         except Exception as err:
-            mdObj.value = f"Error reading log: {err}"
-        finally:
-            mdObj.update()
+            md_view.value = f"❌ Error reading log: {err}"
+        md_view.update()
 
-
-    def send_basic(e):
-        """Send a notification to verify android_notify works"""
+    # ---------------------------------------------------
+    # Send a basic notification
+    # ---------------------------------------------------
+    def send_basic(_):
         try:
             Notification(title="Hello World", message="From android_notify").send()
         except Exception as err:
-            mdObj.value = f"Notification error: {err}"
-            mdObj.update()
-    def asks_permission_if_needed_(e):
-        asks_permission_if_needed()
-    def see_packaged_icon(e):
-        n=Notification(title="Hello World", message="From android_notify")
-        n.tell()
-        #n.send()
+            md_view.value = f"❌ Notification error:\n{err}"
+            md_view.update()
 
+    # ---------------------------------------------------
+    # Show packaged icon (debug)
+    # ---------------------------------------------------
+    def see_packaged_icon(_):
+        try:
+            n = Notification(title="Icon Test", message="Checking icon load…")
+            n.tell()     # non-sending debug function
+        except Exception as err:
+            md_view.value = f"❌ Icon test error:\n{err}"
+            md_view.update()
 
+    # ---------------------------------------------------
+    # Ensure tests folder (safe, auto-created)
+    # ---------------------------------------------------
     def ensure_tests_folder():
         try:
             base_path = get_app_root_path()
@@ -57,46 +92,63 @@ def main(page: ft.Page):
 
         tests_path = os.path.join(base_path, "tests")
         os.makedirs(tests_path, exist_ok=True)
+
         init_file = os.path.join(tests_path, "__init__.py")
         if not os.path.exists(init_file):
-            open(init_file, "w").close()
+            with open(init_file, "w") as f:
+                f.write("")     # create empty file
 
-        page.add(ft.Text(f"{tests_path}", size=24, weight=ft.FontWeight.BOLD))
         return tests_path
 
-    page.add(ft.Text("2222222222 Android Notify Test Results", size=24, weight=ft.FontWeight.BOLD))
-
-    def run_tests(e=None):
-        """Run tests and log results to /sdcard/flet_app_console.txt"""
+    # ---------------------------------------------------
+    # Run unittest test suite
+    # ---------------------------------------------------
+    def run_tests(_):
         tests_path = ensure_tests_folder()
 
         try:
             with open(logs_path, "w") as logf, redirect_stdout(logf):
                 loader = unittest.TestLoader()
                 suite = loader.discover(start_dir=tests_path, pattern="test_*.py")
-                print("Discovered tests:",suite.countTestCases())
-                if suite.countTestCases() ==0:
-                    print("No tests found")
 
+                print("Discovered tests:", suite.countTestCases())
+
+                if suite.countTestCases() == 0:
+                    print("⚠ No tests found")
 
                 runner = unittest.TextTestRunner(stream=logf, verbosity=2)
                 runner.run(suite)
 
-            mdObj.value = f"Tests complete. Log saved to:\n`{logs_path}`"
+            md_view.value = f"Tests complete.\nLog saved at:\n`{logs_path}`"
         except Exception as err:
-            mdObj.value = f"Test error:\n{traceback.format_exc()}"
-        mdObj.update()
-    def has_per(e=None):
-        from android_notify import NotificationHandler
-        print('permmm:',NotificationHandler.has_permission())
+            md_view.value = f"❌ Test error:\n{traceback.format_exc()}"
+
+        md_view.update()
+
+    # ---------------------------------------------------
+    # Check permission
+    # ---------------------------------------------------
+    def check_permission(_):
+        try:
+            from android_notify import NotificationHandler
+            md_view.value = f"Permission: {NotificationHandler.has_permission()}"
+            md_view.update()
+        except Exception as err:
+            md_view.value = f"Error checking permission:\n{err}"
+            md_view.update()
+
+    # ---------------------------------------------------
+    # Add buttons
+    # ---------------------------------------------------
     page.add(
-        ft.OutlinedButton("Send Basic Notification", on_click=send_basic),
-        ft.OutlinedButton("Refresh Prints", on_click=console),
-        ft.OutlinedButton("Run Tests", on_click=run_tests),
-        ft.OutlinedButton("has permission?", on_click=has_per),
-        ft.OutlinedButton("Ask permission if needed", on_click=asks_permission_if_needed_),
-        
-        ft.OutlinedButton("see packaged icon?", on_click=see_packaged_icon),
+        ft.Column([
+            ft.OutlinedButton("Check Permission", on_click=check_permission),
+            ft.OutlinedButton("Ask Permission If Needed", on_click=lambda _: asks_permission_if_needed()),
+            ft.OutlinedButton("Send Basic Notification", on_click=send_basic),
+            ft.OutlinedButton("Run Tests", on_click=run_tests),
+            ft.OutlinedButton("Refresh Log Output", on_click=refresh_console),
+        ], expand=False)
     )
+
 
 ft.app(main)

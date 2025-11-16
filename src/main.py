@@ -39,7 +39,7 @@ def main(page: ft.Page):
     # UTIL: Refresh console output
     # ---------------------------------------------------
     def refresh_console(_):
-        nonlocal md_cache, counter
+        global md_cache, counter
         counter += 1
         print("Refresh attempt:", counter)
 

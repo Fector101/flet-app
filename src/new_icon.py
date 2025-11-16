@@ -1,25 +1,12 @@
-from android_notify import Notification
-from android_notify.config import from_service_file, get_python_activity,get_notification_manager,ON_ANDROID,on_flet_app
-
-from  android_notify.config import Intent
-                     
-from android_notify.an_utils import can_accept_arguments, get_python_activity_context
-PythonActivity = get_python_activity()
-context = get_python_activity_context()
-
-print("8con  ----->",context.getApplicationInfo().icon)
-
-
-
-
 """ Non-Advanced Stuff """
 import random
-import os
+import os, traceback
 from android_notify.config import get_python_activity
 ON_ANDROID = False
 
 def on_flet_app():
     return os.getenv("MAIN_ACTIVITY_HOST_CLASS_NAME")
+
 
 try:
 
@@ -31,30 +18,48 @@ try:
     Intent = autoclass('android.content.Intent')
     PendingIntent = autoclass('android.app.PendingIntent')
     BitmapFactory = autoclass('android.graphics.BitmapFactory')
-    BuildVersion = autoclass('android.os.Build$VERSION')    
+    BuildVersion = autoclass('android.os.Build$VERSION')
+    Notification = autoclass("android.app.Notification")
     ON_ANDROID=True
 except Exception as e:
-    print('\nThis Package Only Runs on Android !!! ---> Check "https://github.com/Fector101/android_notify/" to see design patterns and more info.\n')
+    traceback.print_exc()
+    print(e,'\nThis Package Only Runs on Android !!! ---> Check "https://github.com/Fector101/android_notify/" to see design patterns and more info.\n')
 
 if ON_ANDROID:
     try:
-        NotificationManagerCompat = autoclass('androidx.core.app.NotificationManagerCompat')                                       
-        NotificationCompat = autoclass('androidx.core.app.NotificationCompat')
-
+        NotificationManagerCompat = autoclass('android.app.NotificationManager')                                       
         # Notification Design
-        NotificationCompatBuilder = autoclass('androidx.core.app.NotificationCompat$Builder')
-        NotificationCompatBigTextStyle = autoclass('androidx.core.app.NotificationCompat$BigTextStyle')
-        NotificationCompatBigPictureStyle = autoclass('androidx.core.app.NotificationCompat$BigPictureStyle')
-        NotificationCompatInboxStyle = autoclass('androidx.core.app.NotificationCompat$InboxStyle')
+        NotificationCompatBuilder = autoclass('android.app.Notification$Builder')
+        NotificationCompatBigTextStyle = autoclass('android.app.Notification$BigTextStyle')
+        NotificationCompatBigPictureStyle = autoclass('android.app.Notification$BigPictureStyle')
+        NotificationCompatInboxStyle = autoclass('android.app.Notification$InboxStyle')
     except Exception as e:
-        print("""\n
-        Dependency Error: Add the following in buildozer.spec:
-        * android.gradle_dependencies = androidx.core:core-ktx:1.15.0, androidx.core:core:1.6.0
-        * android.enable_androidx = True
-        * android.permissions = POST_NOTIFICATIONS\n
-        """)
+        traceback.print_exc()
+        print("Error importing notification styles")
 
 
+def set_app_icon_as_large_icon(builder):
+    """
+    Converts the app icon (resource ID) to a Bitmap and sets it as Large Icon.
+    """
+    try:
+        # 1. Resource ID of app icon
+        res_id = context.getApplicationInfo().icon
+
+        # 2. Convert resource ID → Bitmap
+        BitmapFactory = autoclass('android.graphics.BitmapFactory')
+        Resources = context.getResources()
+
+        bitmap = BitmapFactory.decodeResource(Resources, res_id)
+
+        if bitmap is not None:
+            builder.setLargeIcon(bitmap)
+            print("android_notify: Large icon successfully set from app icon.")
+        else:
+            print("android_notify: Failed to decode app icon as bitmap.")
+
+    except Exception as e:
+        print("android_notify ERROR: Failed to set app icon as large icon:", e)
 def get_app_root_path():
     path = ''
     if on_flet_app():
@@ -68,24 +73,22 @@ def get_app_root_path():
             return './'
     return os.path.join(path,'app')
 
-def asks_permission_if_needed():
+def asks_permission_if_needed(no_androidx=False):
     """
     Ask for permission to send notifications if needed.
     """
-    if on_flet_app():
-        ContextCompat = autoclass('androidx.core.content.ContextCompat')
-        # if you get error `Failed to find class: androidx/core/app/ActivityCompat`
-        #in proguard-rules.pro add `-keep class androidx.core.app.ActivityCompat { *; }`
-        ActivityCompat = autoclass('androidx.core.app.ActivityCompat')
-        Manifest = autoclass('android.Manifest$permission')
+    if on_flet_app() or no_androidx:
+        Activity = autoclass("android.app.Activity")
+        Manifest = autoclass("android.Manifest$permission")
+        PackageManager = autoclass("android.content.pm.PackageManager")
         VERSION_CODES = autoclass('android.os.Build$VERSION_CODES')
 
         if BuildVersion.SDK_INT >= VERSION_CODES.TIRAMISU:
             permission = Manifest.POST_NOTIFICATIONS
-            granted = ContextCompat.checkSelfPermission(context, permission)
+            granted = context.checkSelfPermission(permission)
 
-            if granted != 0:  # PackageManager.PERMISSION_GRANTED == 0
-                ActivityCompat.requestPermissions(context, [permission], 101)
+            if granted != PackageManager.PERMISSION_GRANTED:
+                context.requestPermissions([permission], 101)
     else: # android package is from p4a which is for kivy
         try:
             from android.permissions import request_permissions, Permission,check_permission # type: ignore
@@ -131,29 +134,6 @@ def insert_app_icon(builder,custom_icon_path):
         # print('Found res icon -->',context.getApplicationInfo().icon,'<--')
         builder.setSmallIcon(context.getApplicationInfo().icon)
 
-
-def set_app_icon_as_large_icon(builder):
-    """
-    Converts the app icon (resource ID) to a Bitmap and sets it as Large Icon.
-    """
-    try:
-        # 1. Resource ID of app icon
-        res_id = context.getApplicationInfo().icon
-
-        # 2. Convert resource ID → Bitmap
-        BitmapFactory = autoclass('android.graphics.BitmapFactory')
-        Resources = context.getResources()
-
-        bitmap = BitmapFactory.decodeResource(Resources, res_id)
-
-        if bitmap is not None:
-            builder.setLargeIcon(bitmap)
-            print("android_notify: Large icon successfully set from app icon.")
-        else:
-            print("android_notify: Failed to decode app icon as bitmap.")
-
-    except Exception as e:
-        print("android_notify ERROR: Failed to set app icon as large icon:", e)
 def send_notification(
     title:str,
     message:str,
@@ -162,60 +142,68 @@ def send_notification(
     channel_name="Default Channel",
     channel_id:str="default_channel",
     custom_app_icon_path="",
+
     big_picture_path='',
     large_icon_path='',
     big_text="",
     lines=""
     ):
+    """
+    Send a notification on Android.
 
+    :param title: Title of the notification.
+    :param message: Message body.
+    :param style: deprecated.
+    :param img_path: Path to the image resource.
+    :param channel_id: Notification channel ID.(Default is lowercase channel name arg in lowercase)
+    """
     if not ON_ANDROID:
-        print('This Package Only Runs on Android !!!')
+        print('This Package Only Runs on Android !!! ---> Check "https://github.com/Fector101/android_notify/" for Documentation.')
         return
 
-    asks_permission_if_needed()
-
-    channel_id = channel_name.replace(' ','_').lower() if not channel_id else channel_id
-
+    asks_permission_if_needed(no_androidx=True)
+    channel_id=channel_name.replace(' ','_').lower().lower() if not channel_id else channel_id
+    # Get notification manager
     notification_manager = context.getSystemService(context.NOTIFICATION_SERVICE)
 
-    importance = NotificationManagerCompat.IMPORTANCE_HIGH
+    # importance= autoclass('android.app.NotificationManager').IMPORTANCE_HIGH # also works #NotificationManager.IMPORTANCE_DEFAULT
+    importance= NotificationManagerCompat.IMPORTANCE_HIGH #autoclass('android.app.NotificationManager').IMPORTANCE_HIGH also works #NotificationManager.IMPORTANCE_DEFAULT
 
-    # Create channel (Android 8+)
+    # Notification Channel (Required for Android 8.0+)
     if BuildVersion.SDK_INT >= 26:
-        channel = NotificationChannel(channel_id, channel_name, importance)
+        channel = NotificationChannel(channel_id, channel_name,importance)
         notification_manager.createNotificationChannel(channel)
 
-    # Build base notification
+    # Build the notification
     builder = NotificationCompatBuilder(context, channel_id)
     builder.setContentTitle(title)
     builder.setContentText(message)
-    insert_app_icon(builder, custom_app_icon_path)
-    builder.setDefaults(NotificationCompat.DEFAULT_ALL)
-    builder.setPriority(NotificationCompat.PRIORITY_HIGH)
+    insert_app_icon(builder,custom_app_icon_path)
+    builder.setDefaults(Notification.DEFAULT_ALL)
+    builder.setPriority(Notification.PRIORITY_HIGH)
+    set_app_icon_as_large_icon(builder)
 
-    # Deprecated warnings
     if img_path:
-        print('android_notify: img_path deprecated. Use large_icon_path or big_picture_path.')
+        print('android_notify- img_path arg deprecated use "large_icon_path or big_picture_path or custom_app_icon_path" instead')
     if style:
-        print('android_notify: style arg deprecated. Use big_picture_path or big_text.')
+        print('android_notify- "style" arg deprecated use args "big_picture_path", "large_icon_path", "big_text", "lines" instead')
 
-    # Prepare resources
     big_picture = None
-    large_icon = None
-
     if big_picture_path:
         try:
             big_picture = get_image_uri(big_picture_path)
         except FileNotFoundError as e:
-            print("android_notify ERROR: big_picture_path not found:", e)
+            print('android_notify- Error Getting Uri for big_picture_path: ',e)
 
+    large_icon = None
     if large_icon_path:
         try:
             large_icon = get_image_uri(large_icon_path)
         except FileNotFoundError as e:
-            print("android_notify ERROR: large_icon_path not found:", e)
+            print('android_notify- Error Getting Uri for large_icon_path: ',e)
 
-    # Apply styles
+
+    # Apply notification styles
     try:
         if big_text:
             big_text_style = NotificationCompatBigTextStyle()
@@ -228,29 +216,19 @@ def send_notification(
                 inbox_style.addLine(line)
             builder.setStyle(inbox_style)
 
-        # LARGE ICON LOGIC
         if large_icon:
-            bitmap = BitmapFactory.decodeStream(
-                context.getContentResolver().openInputStream(large_icon)
-            )
+            bitmap = BitmapFactory.decodeStream(context.getContentResolver().openInputStream(large_icon))
             builder.setLargeIcon(bitmap)
-        else:
-            # 👇 **HERE: Automatically use app icon bitmap as large icon**
-            set_app_icon_as_large_icon(builder)
 
-        # BIG PICTURE
         if big_picture:
-            bitmap = BitmapFactory.decodeStream(
-                context.getContentResolver().openInputStream(big_picture)
-            )
+            bitmap = BitmapFactory.decodeStream(context.getContentResolver().openInputStream(big_picture))
             big_picture_style = NotificationCompatBigPictureStyle().bigPicture(bitmap)
             builder.setStyle(big_picture_style)
 
     except Exception as e:
-        print("android_notify ERROR: Failed adding notification styles:", e)
-
-    # Show notification
-    notification_id = random.randint(1, 1000)
+        print('android_notify- Error Failed Adding Style: ',e)
+    # Display the notification
+    notification_id = random.randint(0, 100)
     notification_manager.notify(notification_id, builder.build())
-
     return notification_id
+

@@ -278,6 +278,5 @@ def main(page: ft.Page):
     tester = NotificationTester(page)
     tester.create_ui()
 
-# Start the app
-if __name__ == "__main__":
-    ft.app(main)
+
+ft.app(main)

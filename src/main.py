@@ -41,7 +41,7 @@ def main(page: ft.Page):
     def refresh_console(_):
         global md_cache, counter
         counter += 1
-        print("Refresh attempt:", counter)
+        print("This is a print statement:", counter,"\n")
 
         try:
             # APP console output (if running inside Flet debug runner)

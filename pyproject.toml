@@ -13,7 +13,7 @@ dependencies = [
 [tool.flet.android]
 bundle_id = "com.mycompany.antest_demo"
 dependencies = [
-  "pyjnius","https://github.com/Fector101/android_notify/archive/flet-appicon.zip"
+  "pyjnius","https://github.com/Fector101/android_notify/archive/without-androidx.zip"
 ]
 
 [tool.flet]

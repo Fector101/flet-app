@@ -2,7 +2,7 @@ import os,traceback,io,sys,unittest
 import flet as ft
 from contextlib import redirect_stdout
 from android_notify.core import get_app_root_path,asks_permission_if_needed
-
+from android_notify import Notification, send_notification
 md1=''
 i=0
 def main(page: ft.Page):
@@ -37,13 +37,14 @@ def main(page: ft.Page):
     def send_basic(e):
         """Send a notification to verify android_notify works"""
         try:
-            from android_notify import Notification
             Notification(title="Hello World", message="From android_notify").send()
         except Exception as err:
             mdObj.value = f"Notification error: {err}"
             mdObj.update()
     def asks_permission_if_needed_(e):
         asks_permission_if_needed()
+    def see_packaged_icon(e):
+        send_notification("","",)
 
 
     def ensure_tests_folder():
@@ -87,11 +88,13 @@ def main(page: ft.Page):
         from android_notify import NotificationHandler
         print('permmm:',NotificationHandler.has_permission())
     page.add(
-        ft.OutlinedButton("🔔 Send Basic Notification", on_click=send_basic),
-        ft.OutlinedButton("🔁 Refresh Prints", on_click=console),
-        ft.OutlinedButton("🧪 Run Tests", on_click=run_tests),
-        ft.OutlinedButton("🧪permmm", on_click=has_per),
-        ft.OutlinedButton("🧪asks_permission_if_needed", on_click=asks_permission_if_needed_),
+        ft.OutlinedButton("Send Basic Notification", on_click=send_basic),
+        ft.OutlinedButton("Refresh Prints", on_click=console),
+        ft.OutlinedButton("Run Tests", on_click=run_tests),
+        ft.OutlinedButton("has permission?", on_click=has_per),
+        ft.OutlinedButton("Ask permission if needed", on_click=asks_permission_if_needed_),
+        
+        ft.OutlinedButton("see packaged icon?", on_click=see_packaged_icon),
     )
 
 ft.app(main)

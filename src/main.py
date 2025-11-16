@@ -44,8 +44,9 @@ def main(page: ft.Page):
     def asks_permission_if_needed_(e):
         asks_permission_if_needed()
     def see_packaged_icon(e):
-        from new_icon import send_notification
-        send_notification("","",)
+        n=Notification(title="Hello World", message="From android_notify")
+        n.tell()
+        #n.send()
 
 
     def ensure_tests_folder():

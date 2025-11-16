@@ -1,282 +1,155 @@
-import os
-import traceback
-import unittest
+import os, traceback, io, sys, unittest
 import flet as ft
 from contextlib import redirect_stdout
 from android_notify.core import get_app_root_path, asks_permission_if_needed
 from android_notify import Notification
 
-class NotificationTester:
-    def __init__(self, page):
-        self.page = page
-        self.logs_path = os.path.join(get_app_root_path(), 'last.txt')
-        self.md_obj = None
-        
-    def create_ui(self):
-        """Create the main UI layout"""
-        # Header
-        header = ft.Container(
-            content=ft.Column([
-                ft.Text("Android Notify Test Results", 
-                       size=24, 
-                       weight=ft.FontWeight.BOLD,
-                       color=ft.colors.BLUE_900),
-                ft.Divider(height=1, color=ft.colors.GREY_400)
-            ]),
-            padding=10
-        )
-        
-        # Results display
-        self.md_obj = ft.Markdown(
-            "# Test Results will appear here\n\nRun tests or send notifications to see results.",
-            selectable=True,
-            extension_set=ft.MarkdownExtensionSet.GITHUB_WEB,
-            on_tap_link=lambda e: self.page.launch_url(e.data),
-            expand=True,
-        )
-        
-        results_card = ft.Card(
-            content=ft.Container(
-                content=ft.Column([
-                    ft.ListTile(
-                        leading=ft.Icon(ft.icons.RECEIPT),
-                        title=ft.Text("Test Results", weight=ft.FontWeight.BOLD),
-                    ),
-                    ft.Divider(height=1),
-                    ft.Container(
-                        content=self.md_obj,
-                        padding=15,
-                        expand=True,
-                    )
-                ]),
-                margin=10,
-            ),
-            expand=True,
-        )
-        
-        # Control buttons
-        button_style = ft.ButtonStyle(
-            color=ft.colors.WHITE,
-            bgcolor=ft.colors.BLUE_600,
-            padding=15,
-        )
-        
-        controls = ft.ResponsiveRow([
-            ft.OutlinedButton(
-                content=ft.Row([
-                    ft.Icon(ft.icons.NOTIFICATIONS, color=ft.colors.GREEN),
-                    ft.Text("Send Basic Notification", size=14),
-                ]),
-                on_click=self.send_basic,
-                style=button_style,
-                col={"sm": 12, "md": 6}
-            ),
-            ft.OutlinedButton(
-                content=ft.Row([
-                    ft.Icon(ft.icons.REFRESH, color=ft.colors.BLUE),
-                    ft.Text("Refresh Results", size=14),
-                ]),
-                on_click=self.refresh_results,
-                style=button_style,
-                col={"sm": 12, "md": 6}
-            ),
-            ft.OutlinedButton(
-                content=ft.Row([
-                    ft.Icon(ft.icons.PLAY_ARROW, color=ft.colors.ORANGE),
-                    ft.Text("Run Tests", size=14),
-                ]),
-                on_click=self.run_tests,
-                style=button_style,
-                col={"sm": 12, "md": 6}
-            ),
-            ft.OutlinedButton(
-                content=ft.Row([
-                    ft.Icon(ft.icons.SECURITY, color=ft.colors.PURPLE),
-                    ft.Text("Check Permission", size=14),
-                ]),
-                on_click=self.check_permission,
-                style=button_style,
-                col={"sm": 12, "md": 6}
-            ),
-            ft.OutlinedButton(
-                content=ft.Row([
-                    ft.Icon(ft.icons.PERMISSION, color=ft.colors.RED),
-                    ft.Text("Request Permission", size=14),
-                ]),
-                on_click=self.request_permission,
-                style=button_style,
-                col={"sm": 12, "md": 6}
-            ),
-            ft.OutlinedButton(
-                content=ft.Row([
-                    ft.Icon(ft.icons.IMAGE, color=ft.colors.TEAL),
-                    ft.Text("Test Icon", size=14),
-                ]),
-                on_click=self.test_icon,
-                style=button_style,
-                col={"sm": 12, "md": 6}
-            ),
-        ])
-        
-        # Progress indicator
-        self.progress = ft.ProgressBar(visible=False, width=400)
-        self.status_text = ft.Text("", size=12, color=ft.colors.GREY_600)
-        
-        # Assemble the page
-        self.page.add(
-            header,
-            results_card,
-            ft.Container(
-                content=ft.Column([
-                    controls,
-                    ft.Row([self.progress], alignment=ft.MainAxisAlignment.CENTER),
-                    ft.Row([self.status_text], alignment=ft.MainAxisAlignment.CENTER)
-                ]),
-                padding=15
-            )
-        )
-    
-    def update_status(self, message, show_progress=False):
-        """Update status text and progress indicator"""
-        self.status_text.value = message
-        self.progress.visible = show_progress
-        self.status_text.update()
-        self.progress.update()
-    
-    def update_results(self, content):
-        """Update the markdown results display"""
-        self.md_obj.value = content
-        self.md_obj.update()
-    
-    def send_basic(self, e):
-        """Send a basic notification"""
-        self.update_status("Sending notification...", True)
+# Global log mirror
+md_cache = ""
+counter = 0
+
+
+def main(page: ft.Page):
+    page.scroll = ft.ScrollMode.ADAPTIVE
+    page.padding = 20
+
+    page.add(ft.Text(
+        "Android Notify Test Panel",
+        size=28,
+        weight=ft.FontWeight.BOLD,
+    ))
+
+    # Path to log file
+    try:
+        logs_path = os.path.join(get_app_root_path(), "last.txt")
+    except Exception:
+        logs_path = "/sdcard/last.txt"   # fallback for safety
+
+    # Markdown output viewer
+    md_view = ft.Markdown(
+        md_cache,
+        selectable=True,
+        extension_set=ft.MarkdownExtensionSet.GITHUB_WEB,
+        on_tap_link=lambda e: page.launch_url(e.data),
+        expand=True,
+    )
+    page.add(md_view)
+
+    # ---------------------------------------------------
+    # UTIL: Refresh console output
+    # ---------------------------------------------------
+    def refresh_console(_):
+        nonlocal md_cache, counter
+        counter += 1
+        print("Refresh attempt:", counter)
+
+        try:
+            # APP console output (if running inside Flet debug runner)
+            flet_console = os.getenv("FLET_APP_CONSOLE")
+            if flet_console and os.path.exists(flet_console):
+                with open(flet_console, "r") as f:
+                    md_cache = f.read()
+
+            # android-notify log file
+            if os.path.exists(logs_path):
+                with open(logs_path, "r") as f:
+                    md_cache = f.read() + "\n\n" + md_cache
+
+            md_view.value = md_cache
+        except Exception as err:
+            md_view.value = f"❌ Error reading log: {err}"
+        md_view.update()
+
+    # ---------------------------------------------------
+    # Send a basic notification
+    # ---------------------------------------------------
+    def send_basic(_):
         try:
             Notification(title="Hello World", message="From android_notify").send()
-            self.update_results("# ✅ Notification Sent Successfully\n\nBasic notification was sent successfully.")
-            self.update_status("Notification sent successfully")
         except Exception as err:
-            error_msg = f"# ❌ Notification Failed\n\nError: {err}\n\n```python\n{traceback.format_exc()}\n```"
-            self.update_results(error_msg)
-            self.update_status(f"Notification failed: {err}")
-    
-    def refresh_results(self, e):
-        """Refresh the results display"""
-        self.update_status("Refreshing results...", True)
+            md_view.value = f"❌ Notification error:\n{err}"
+            md_view.update()
+
+    # ---------------------------------------------------
+    # Show packaged icon (debug)
+    # ---------------------------------------------------
+    def see_packaged_icon(_):
         try:
-            # Try to read from console output
-            console_content = ""
-            if os.getenv("FLET_APP_CONSOLE"):
-                with open(os.getenv("FLET_APP_CONSOLE"), "r") as f:
-                    console_content = f.read()
-            
-            # Try to read from log file
-            log_content = ""
-            if os.path.exists(self.logs_path):
-                with open(self.logs_path, 'r') as logf:
-                    log_content = logf.read()
-            
-            combined_content = f"# 🔄 Refreshed Results\n\n## Console Output:\n```\n{console_content}\n```\n\n## Log File:\n```\n{log_content}\n```"
-            self.update_results(combined_content)
-            self.update_status("Results refreshed")
+            n = Notification(title="Icon Test", message="Checking icon load…")
+            n.tell()     # non-sending debug function
         except Exception as err:
-            self.update_results(f"# ❌ Error Refreshing\n\nError: {err}")
-            self.update_status(f"Refresh failed: {err}")
-    
-    def run_tests(self, e):
-        """Run unit tests"""
-        self.update_status("Running tests...", True)
-        tests_path = self.ensure_tests_folder()
-        
-        try:
-            with open(self.logs_path, "w") as logf, redirect_stdout(logf):
-                loader = unittest.TestLoader()
-                suite = loader.discover(start_dir=tests_path, pattern="test_*.py")
-                test_count = suite.countTestCases()
-                
-                print(f"Discovered {test_count} test cases")
-                if test_count == 0:
-                    print("No tests found in tests/ directory")
-                
-                runner = unittest.TextTestRunner(stream=logf, verbosity=2)
-                result = runner.run(suite)
-            
-            # Read and display results
-            with open(self.logs_path, "r") as logf:
-                log_content = logf.read()
-            
-            result_msg = f"# 🧪 Tests Complete\n\n**Test Cases:** {test_count}\n**Log File:** `{self.logs_path}`\n\n## Results:\n```\n{log_content}\n```"
-            self.update_results(result_msg)
-            self.update_status(f"Tests complete - {test_count} cases run")
-            
-        except Exception as err:
-            error_msg = f"# ❌ Test Error\n\nError running tests:\n```python\n{traceback.format_exc()}\n```"
-            self.update_results(error_msg)
-            self.update_status(f"Test error: {err}")
-    
-    def check_permission(self, e):
-        """Check notification permission status"""
-        self.update_status("Checking permission...", True)
-        try:
-            from android_notify import NotificationHandler
-            has_perm = NotificationHandler.has_permission()
-            status = "✅ Granted" if has_perm else "❌ Denied"
-            self.update_results(f"# 🔐 Permission Status\n\n**Notification Permission:** {status}")
-            self.update_status(f"Permission: {'Granted' if has_perm else 'Denied'}")
-        except Exception as err:
-            self.update_results(f"# ❌ Permission Check Failed\n\nError: {err}")
-            self.update_status(f"Permission check failed: {err}")
-    
-    def request_permission(self, e):
-        """Request notification permission"""
-        self.update_status("Requesting permission...", True)
-        try:
-            asks_permission_if_needed()
-            self.update_results("# 📝 Permission Requested\n\nNotification permission has been requested.")
-            self.update_status("Permission requested")
-        except Exception as err:
-            self.update_results(f"# ❌ Permission Request Failed\n\nError: {err}")
-            self.update_status(f"Permission request failed: {err}")
-    
-    def test_icon(self, e):
-        """Test notification with icon"""
-        self.update_status("Testing notification icon...", True)
-        try:
-            n = Notification(title="Icon Test", message="Testing packaged icon")
-            n.tell()  # This might show the notification
-            self.update_results("# 🖼️ Icon Test\n\nNotification with icon has been triggered.")
-            self.update_status("Icon test completed")
-        except Exception as err:
-            self.update_results(f"# ❌ Icon Test Failed\n\nError: {err}")
-            self.update_status(f"Icon test failed: {err}")
-    
-    def ensure_tests_folder(self):
-        """Ensure tests folder exists"""
+            md_view.value = f"❌ Icon test error:\n{err}"
+            md_view.update()
+
+    # ---------------------------------------------------
+    # Ensure tests folder (safe, auto-created)
+    # ---------------------------------------------------
+    def ensure_tests_folder():
         try:
             base_path = get_app_root_path()
         except Exception:
             base_path = os.path.dirname(__file__)
-        
+
         tests_path = os.path.join(base_path, "tests")
         os.makedirs(tests_path, exist_ok=True)
-        
-        # Create __init__.py if it doesn't exist
+
         init_file = os.path.join(tests_path, "__init__.py")
         if not os.path.exists(init_file):
-            open(init_file, "w").close()
-        
+            with open(init_file, "w") as f:
+                f.write("")     # create empty file
+
         return tests_path
 
-def main(page: ft.Page):
-    # Page configuration
-    page.title = "Android Notify Tester"
-    page.scroll = ft.ScrollMode.ADAPTIVE
-    page.padding = 10
-    page.theme_mode = ft.ThemeMode.LIGHT
-    
-    # Initialize and create UI
-    tester = NotificationTester(page)
-    tester.create_ui()
+    # ---------------------------------------------------
+    # Run unittest test suite
+    # ---------------------------------------------------
+    def run_tests(_):
+        tests_path = ensure_tests_folder()
+
+        try:
+            with open(logs_path, "w") as logf, redirect_stdout(logf):
+                loader = unittest.TestLoader()
+                suite = loader.discover(start_dir=tests_path, pattern="test_*.py")
+
+                print("Discovered tests:", suite.countTestCases())
+
+                if suite.countTestCases() == 0:
+                    print("⚠ No tests found")
+
+                runner = unittest.TextTestRunner(stream=logf, verbosity=2)
+                runner.run(suite)
+
+            md_view.value = f"Tests complete.\nLog saved at:\n`{logs_path}`"
+        except Exception as err:
+            md_view.value = f"❌ Test error:\n{traceback.format_exc()}"
+
+        md_view.update()
+
+    # ---------------------------------------------------
+    # Check permission
+    # ---------------------------------------------------
+    def check_permission(_):
+        try:
+            from android_notify import NotificationHandler
+            md_view.value = f"Permission: {NotificationHandler.has_permission()}"
+            md_view.update()
+        except Exception as err:
+            md_view.value = f"Error checking permission:\n{err}"
+            md_view.update()
+
+    # ---------------------------------------------------
+    # Add buttons
+    # ---------------------------------------------------
+    page.add(
+        ft.Column([
+            ft.OutlinedButton("Send Basic Notification", on_click=send_basic),
+            ft.OutlinedButton("Refresh Log Output", on_click=refresh_console),
+            ft.OutlinedButton("Run Tests", on_click=run_tests),
+            ft.OutlinedButton("Check Permission", on_click=check_permission),
+            ft.OutlinedButton("Ask Permission If Needed", on_click=lambda _: asks_permission_if_needed()),
+            ft.OutlinedButton("See Packaged Icon", on_click=see_packaged_icon),
+        ], expand=False)
+    )
 
 
 ft.app(main)

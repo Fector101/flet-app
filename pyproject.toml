@@ -13,7 +13,7 @@ dependencies = [
 [tool.flet.android]
 bundle_id = "com.mycompany.antest_demo"
 dependencies = [
-  "pyjnius","android-notify==1.60.4.dev0"
+  "pyjnius", "https://github.com/Fector101/android_notify/archive/give-no-androidx-main-branch-features.zip"
 ]
 
 [tool.flet]

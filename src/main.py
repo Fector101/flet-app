@@ -1,174 +1,169 @@
-import os, traceback, io, sys, unittest
-import flet as ft
+import os
+import traceback
+import unittest
 from contextlib import redirect_stdout
+
+import flet as ft
+from jnius import autoclass
+
 from android_notify.core import get_app_root_path, asks_permission_if_needed
 from android_notify import Notification
 
-# Global log mirror
-md_cache = ""
-counter = 0
-from jnius import autoclass, JavaException
 
-def java_class_exists(class_name):
+# -------------------------------------------------
+# Safe Java class existence check
+# -------------------------------------------------
+def java_class_exists(class_name: str) -> bool:
     try:
         autoclass(class_name)
         return True
-    except JavaException:
+    except Exception:
         return False
 
 
-# Examples
-#print()          # True
-#print(java_class_exists("android.app.NonExistentClass"))       # False
-
+# -------------------------------------------------
+# Main Flet app
+# -------------------------------------------------
 def main(page: ft.Page):
+    page.title = "Android Java Class Probe"
     page.scroll = ft.ScrollMode.ADAPTIVE
     page.padding = 20
 
-    page.add(ft.Text(
-        "Android Notify Test Panel",
-        size=28,
-        weight=ft.FontWeight.BOLD,
-    ))
+    # -------------------------------------------------
+    # Header
+    # -------------------------------------------------
+    page.add(
+        ft.Text(
+            "Android Notify Test Panel",
+            size=28,
+            weight=ft.FontWeight.BOLD,
+        )
+    )
 
-    # Path to log file
+    # -------------------------------------------------
+    # Log path
+    # -------------------------------------------------
     try:
         logs_path = os.path.join(get_app_root_path(), "last.txt")
     except Exception:
-        logs_path = "/sdcard/last.txt"   # fallback for safety
+        logs_path = "/sdcard/last.txt"
 
-    # Markdown output viewer
+    # -------------------------------------------------
+    # Markdown output
+    # -------------------------------------------------
     md_view = ft.Markdown(
-        md_cache,
+        "",
         selectable=True,
         extension_set=ft.MarkdownExtensionSet.GITHUB_WEB,
-        on_tap_link=lambda e: page.launch_url(e.data),
         expand=True,
     )
     page.add(md_view)
 
-    # ---------------------------------------------------
-    # UTIL: Refresh console output
-    # ---------------------------------------------------
-    def refresh_console(_):
-        global md_cache, counter
-        counter += 1
-        print("This is a print statement:", counter,"\n")
+    # -------------------------------------------------
+    # Java class input
+    # -------------------------------------------------
+    class_input = ft.TextField(
+        label="Java Class Name",
+        hint_text="android.app.Notification | androidx.core.app.ActivityCompat",
+        expand=True,
+    )
 
-        try:
-            # APP console output (if running inside Flet debug runner)
-            flet_console = os.getenv("FLET_APP_CONSOLE")
-            if flet_console and os.path.exists(flet_console):
-                with open(flet_console, "r") as f:
-                    md_cache = f.read()
+    # -------------------------------------------------
+    # Handlers
+    # -------------------------------------------------
+    def check_class(_):
+        class_name = class_input.value.strip()
 
-            # android-notify log file
-            if os.path.exists(logs_path):
-                with open(logs_path, "r") as f:
-                    md_cache = f.read() + "\n\n" + md_cache
+        if not class_name:
+            md_view.value = "⚠ Please enter a Java class name"
+            md_view.update()
+            return
 
-            md_view.value = md_cache
-        except Exception as err:
-            md_view.value = f"❌ Error reading log: {err}"
+        exists = java_class_exists(class_name)
+
+        md_view.value = (
+            f"✅ **Class exists**\n\n`{class_name}`"
+            if exists
+            else f"❌ **Class NOT found**\n\n`{class_name}`"
+        )
         md_view.update()
 
-    # ---------------------------------------------------
-    # Send a basic notification
-    # ---------------------------------------------------
     def send_basic(_):
         try:
-            Notification(title="Hello World", message="From android_notify").send()
+            Notification(
+                title="Hello World",
+                message="From android_notify",
+            ).send()
+            md_view.value = "✅ Notification sent"
         except Exception as err:
-            md_view.value = f"❌ Notification error:\n{err}"
-            md_view.update()
+            md_view.value = f"❌ Notification error:\n```\n{err}\n```"
+        md_view.update()
 
-    # ---------------------------------------------------
-    # Show packaged icon (debug)
-    # ---------------------------------------------------
-    def see_packaged_icon(_):
+    def refresh_console(_):
         try:
-            n = Notification(title="Icon Test", message="Checking icon load…")
-            n.tell()     # non-sending debug function
+            content = ""
+            if os.path.exists(logs_path):
+                with open(logs_path, "r") as f:
+                    content = f.read()
+            md_view.value = content or "ℹ No logs yet"
         except Exception as err:
-            md_view.value = f"❌ Icon test error:\n{err}"
-            md_view.update()
+            md_view.value = f"❌ Log read error:\n{err}"
+        md_view.update()
 
-    # ---------------------------------------------------
-    # Ensure tests folder (safe, auto-created)
-    # ---------------------------------------------------
     def ensure_tests_folder():
         try:
-            base_path = get_app_root_path()
+            base = get_app_root_path()
         except Exception:
-            base_path = os.path.dirname(__file__)
+            base = os.path.dirname(__file__)
 
-        tests_path = os.path.join(base_path, "tests")
+        tests_path = os.path.join(base, "tests")
         os.makedirs(tests_path, exist_ok=True)
 
         init_file = os.path.join(tests_path, "__init__.py")
         if not os.path.exists(init_file):
-            with open(init_file, "w") as f:
-                f.write("")     # create empty file
+            open(init_file, "w").close()
 
         return tests_path
 
-    # ---------------------------------------------------
-    # Run unittest test suite
-    # ---------------------------------------------------
     def run_tests(_):
-        tests_path = ensure_tests_folder()
-
         try:
+            tests_path = ensure_tests_folder()
             with open(logs_path, "w") as logf, redirect_stdout(logf):
                 loader = unittest.TestLoader()
-                suite = loader.discover(start_dir=tests_path, pattern="test_*.py")
+                suite = loader.discover(tests_path, pattern="test_*.py")
 
                 print("Discovered tests:", suite.countTestCases())
-
-                if suite.countTestCases() == 0:
-                    print("⚠ No tests found")
 
                 runner = unittest.TextTestRunner(stream=logf, verbosity=2)
                 runner.run(suite)
 
-            md_view.value = f"Tests complete.\nLog saved at:\n`{logs_path}`"
-        except Exception as err:
-            md_view.value = f"❌ Test error:\n{traceback.format_exc()}"
+            md_view.value = f"✅ Tests finished\n\nLog saved to:\n`{logs_path}`"
+        except Exception:
+            md_view.value = f"❌ Test error:\n```\n{traceback.format_exc()}\n```"
 
         md_view.update()
 
-    # ---------------------------------------------------
-    # Check permission
-    # ---------------------------------------------------
-    def check_permission(_):
-        try:
-            from android_notify import NotificationHandler
-            md_view.value = f"should be true: {java_class_exists("android.app.Notification")}"#f"Permission: {NotificationHandler.has_permission()}"
-            md_view.update()
-        except Exception as err:
-            md_view.value = f"Error checking permission:\n{err}"
-            md_view.update()
-    def might_crash(_):
-        try:
-            md_view.value = f"should be false: {java_class_exists('androidx.core.app.ActivityCompat')}"#f"Permission: {NotificationHandler.has_permission()}"
-            md_view.update()
-        except Exception as err:
-            md_view.value = f"Error checking existence:\n{err}"
-            md_view.update()
-
-    # ---------------------------------------------------
-    # Add buttons
-    # ---------------------------------------------------
+    # -------------------------------------------------
+    # UI layout
+    # -------------------------------------------------
     page.add(
-        ft.Column([
-            ft.OutlinedButton("Check Permission", on_click=check_permission),
-            ft.OutlinedButton("might crash", on_click=might_crash),
-            ft.OutlinedButton("Ask Permission If Needed", on_click=lambda _: asks_permission_if_needed()),
-            ft.OutlinedButton("Send Basic Notification", on_click=send_basic),
-            ft.OutlinedButton("Run Tests", on_click=run_tests),
-            ft.OutlinedButton("Refresh Log Output", on_click=refresh_console),
-        ], expand=False)
+        ft.Column(
+            [
+                ft.Text("Java Class Probe", size=20, weight=ft.FontWeight.BOLD),
+                class_input,
+                ft.OutlinedButton("Check Class Exists", on_click=check_class),
+                ft.Divider(),
+                ft.OutlinedButton("Ask Permission If Needed", on_click=lambda _: asks_permission_if_needed()),
+                ft.OutlinedButton("Send Basic Notification", on_click=send_basic),
+                ft.OutlinedButton("Run Tests", on_click=run_tests),
+                ft.OutlinedButton("Refresh Log Output", on_click=refresh_console),
+            ],
+            expand=False,
+        )
     )
 
 
+# -------------------------------------------------
+# Run app
+# -------------------------------------------------
 ft.app(main)

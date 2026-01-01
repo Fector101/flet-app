@@ -150,7 +150,7 @@ def main(page: ft.Page):
             md_view.update()
     def might_crash(_):
         try:
-            md_view.value = f"should be false: {java_class_exists('androidx.core.graphics.drawable.IconCompat')}"#f"Permission: {NotificationHandler.has_permission()}"
+            md_view.value = f"should be false: {java_class_exists('androidx.core.app.ActivityCompat')}"#f"Permission: {NotificationHandler.has_permission()}"
             md_view.update()
         except Exception as err:
             md_view.value = f"Error checking existence:\n{err}"

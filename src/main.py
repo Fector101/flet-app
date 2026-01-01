@@ -13,14 +13,22 @@ from android_notify import Notification
 # -------------------------------------------------
 # Safe Java class existence check
 # -------------------------------------------------
+from jnius import autoclass, JavaException
+
 def java_class_exists(class_name: str) -> bool:
+    """
+    Safely check if a Java class exists on Android.
+    Uses reflection to avoid crashes with non-existent classes.
+    """
     try:
-        autoclass(class_name)
+        Class = autoclass("java.lang.Class")
+        # forName with initialize=False prevents static init
+        Class.forName(class_name, False, autoclass("java.lang.Thread").currentThread().getContextClassLoader())
         return True
+    except JavaException:
+        return False
     except Exception:
         return False
-
-
 # -------------------------------------------------
 # Main Flet app
 # -------------------------------------------------

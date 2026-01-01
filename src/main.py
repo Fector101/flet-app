@@ -13,22 +13,21 @@ from android_notify import Notification
 # -------------------------------------------------
 # Safe Java class existence check
 # -------------------------------------------------
-from jnius import autoclass, JavaException
-
 def java_class_exists(class_name: str) -> bool:
     """
-    Safely check if a Java class exists on Android.
-    Uses reflection to avoid crashes with non-existent classes.
+    Check if a Java class exists on Android.
+    Uses autoclass() with exception catching to prevent crashes.
     """
     try:
-        Class = autoclass("java.lang.Class")
-        # forName with initialize=False prevents static init
-        Class.forName(class_name, False, autoclass("java.lang.Thread").currentThread().getContextClassLoader())
+        autoclass(class_name)  # Try to load the class
         return True
-    except JavaException:
+    except Exception as e:
+        print("reason:",e)
+        traceback.print_exc()
+        # Any failure (ClassNotFound, NoClassDefFoundError, static init error)
         return False
-    except Exception:
-        return False
+
+
 # -------------------------------------------------
 # Main Flet app
 # -------------------------------------------------
@@ -87,13 +86,17 @@ def main(page: ft.Page):
             md_view.update()
             return
 
-        exists = java_class_exists(class_name)
+        try:
+            exists = java_class_exists(class_name)
+            md_view.value = (
+                f"✅ **Class exists**\n\n`{class_name}`"
+                if exists
+                else f"❌ **Class NOT found**\n\n`{class_name}`"
+            )
+        except Exception as err:
+            # Prevent crashes even if the class has static init issues
+            md_view.value = f"💥 Error checking class `{class_name}`:\n```\n{err}\n```"
 
-        md_view.value = (
-            f"✅ **Class exists**\n\n`{class_name}`"
-            if exists
-            else f"❌ **Class NOT found**\n\n`{class_name}`"
-        )
         md_view.update()
 
     def send_basic(_):

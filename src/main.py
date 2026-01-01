@@ -7,7 +7,19 @@ from android_notify import Notification
 # Global log mirror
 md_cache = ""
 counter = 0
+from jnius import autoclass, JavaException
 
+def java_class_exists(class_name):
+    try:
+        autoclass(class_name)
+        return True
+    except JavaException:
+        return False
+
+
+# Examples
+#print()          # True
+#print(java_class_exists("android.app.NonExistentClass"))       # False
 
 def main(page: ft.Page):
     page.scroll = ft.ScrollMode.ADAPTIVE
@@ -131,10 +143,17 @@ def main(page: ft.Page):
     def check_permission(_):
         try:
             from android_notify import NotificationHandler
-            md_view.value = f"Permission: {NotificationHandler.has_permission()}"
+            md_view.value = f"should be true: {java_class_exists("android.app.Notification")}"#f"Permission: {NotificationHandler.has_permission()}"
             md_view.update()
         except Exception as err:
             md_view.value = f"Error checking permission:\n{err}"
+            md_view.update()
+    def might_crash(_):
+        try:
+            md_view.value = f"should be false: {java_class_exists('androidx.core.graphics.drawable.IconCompat')}"#f"Permission: {NotificationHandler.has_permission()}"
+            md_view.update()
+        except Exception as err:
+            md_view.value = f"Error checking existence:\n{err}"
             md_view.update()
 
     # ---------------------------------------------------
@@ -143,6 +162,7 @@ def main(page: ft.Page):
     page.add(
         ft.Column([
             ft.OutlinedButton("Check Permission", on_click=check_permission),
+            ft.OutlinedButton("might crash", on_click=might_crash),
             ft.OutlinedButton("Ask Permission If Needed", on_click=lambda _: asks_permission_if_needed()),
             ft.OutlinedButton("Send Basic Notification", on_click=send_basic),
             ft.OutlinedButton("Run Tests", on_click=run_tests),

@@ -13,7 +13,7 @@ dependencies = [
 [tool.flet.android]
 bundle_id = "com.mycompany.antest_demo"
 dependencies = [
-  "pyjnius", "https://github.com/Fector101/android_notify/archive/sync-with-main.zip"
+  "pyjnius", "android-notify==1.60.8.dev0"
 ]
 
 [tool.flet]

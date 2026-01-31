@@ -1,26 +1,20 @@
 import flet as ft
 
+
+def on_click(e):
+    from jnius import autoclass
+    Log = autoclass("android.util.Log")  # TODO Replace when on android
+    Log.e("test","world")
+
+    from android_notify import Notification
+    Notification(title="Hello Earth").send()
+
+    Log.e("test","world1")
+
 def main(page: ft.Page):
-    page.title = "Flet counter example"
-    page.vertical_alignment = ft.MainAxisAlignment.CENTER
-
-    input = ft.TextField(value="0", text_align=ft.TextAlign.RIGHT, width=100)
-
-    def minus_click(e):
-        input.value = str(int(input.value) - 1)
-
-    def plus_click(e):
-        input.value = str(int(input.value) + 1)
-
-    page.add(
-        ft.Row(
-            alignment=ft.MainAxisAlignment.CENTER,
-            controls=[
-                ft.IconButton(ft.Icons.REMOVE, on_click=minus_click),
-                input,
-                ft.IconButton(ft.Icons.ADD, on_click=plus_click),
-            ],
+    page.title = "Logging Example"
+    page.floating_action_button=ft.FloatingActionButton(
+            icon=ft.Icons.ADD, on_click=on_click
         )
-    )
 
-ft.run(main)
+ft.app(target=main)

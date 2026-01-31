@@ -1,35 +1,35 @@
 [project]
-name = "antest_demo"
-version = "0.13.0"
+name = "flet-app"
+version = "0.1.0"
 description = ""
-requires-python = ">=3.9"
+readme = "README.md"
+requires-python = ">=3.10"
 authors = [
     { name = "Flet developer", email = "you@example.com" }
 ]
 dependencies = [
-  "flet==0.80.4",
+    "flet>=0.80.4",
+    "pyjnius==1.6.1","android-notify==1.60.8.dev0",
+    "certifi>=2025.6.15",
+    "requests"
 ]
 
-[tool.flet.android]
-bundle_id = "com.mycompany.antest_demo"
-dependencies = [
-  "cryptography","pyjnius==1.6.1", "android-notify==1.60.8.dev0"
+[dependency-groups]
+dev = [
+    "flet-cli>=0.80.5",
+    "flet-desktop-light>=0.80.5",
+    "flet-web>=0.80.5",
 ]
 
 [tool.flet]
-product = "Antest demo"
+org = "com.mycompany"
+product = "flet-app"
 company = "Flet"
-copyright = "Copyright (C) 2025 by Flet"
+copyright = "Copyright (C) 2023-2026 by Flet"
 
 [tool.flet.app]
 path = "src"
 
-[tool.uv]
-dev-dependencies = [
-    "flet[all]==0.80.4",
-]
+
 [tool.flet.android.permission]
 "android.permission.POST_NOTIFICATIONS" = true
-
-[tool.flet.flutter.pubspec.dependency_overrides]
-webview_flutter_android = "3.16.0"

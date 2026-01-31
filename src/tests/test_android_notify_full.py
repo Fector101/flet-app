@@ -4,9 +4,8 @@ Covers all notification styles, callbacks, and behaviors.
 """
 import unittest
 import time
-import traceback
 
-from android_notify import Notification, NotificationStyles, NotificationHandler, send_notification
+from android_notify import Notification
 
 
 class TestAndroidNotifyFull(unittest.TestCase):

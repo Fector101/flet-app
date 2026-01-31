@@ -8,7 +8,7 @@ authors = [
     { name = "Flet developer", email = "you@example.com" }
 ]
 dependencies = [
-    "flet>=0.80.4",
+    "flet>=0.80.5",
     "pyjnius==1.6.1","android-notify==1.60.8.dev0",
     "certifi>=2025.6.15",
     "requests"

@@ -1,3 +1,4 @@
+import logging
 import os, traceback, unittest
 import flet as ft
 
@@ -7,13 +8,14 @@ from android_notify.config import on_android_platform
 
 from android_notify.core import get_app_root_path, asks_permission_if_needed
 from android_notify import Notification
-from android_notify.internal.logger import android_print
+from android_notify.internal.logger import android_print, logger
 
 android_print("successful imported android_notify...")
 
 md_cache = ""
 counter = 0
 
+logger.setLevel(logging.DEBUG)
 
 def main(page: ft.Page):
     page.scroll = ft.ScrollMode.ADAPTIVE
@@ -124,7 +126,9 @@ def main(page: ft.Page):
     def check_permission(_):
         try:
             from android_notify import NotificationHandler
-            md_view.value = f"Permission: {NotificationHandler.has_permission()}"
+            state = f"Permission: {NotificationHandler.has_permission()}"
+            md_view.value = state
+            android_print(state)
             md_view.update()
         except Exception as err:
             md_view.value = f"Error checking permission:\n{err}"

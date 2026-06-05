@@ -9,6 +9,7 @@ from android_notify.config import on_android_platform
 from android_notify.core import get_app_root_path, asks_permission_if_needed
 from android_notify import Notification
 from android_notify.internal.logger import android_print, logger
+from android_notify.config import __version__
 
 android_print("successful imported android_notify...")
 
@@ -70,7 +71,7 @@ def main(page: ft.Page):
     # Send a basic notification
     def send_basic(_):
         try:
-            Notification(title="Hello World", message="From android_notify").send()
+            Notification(title=__version__+" Hello World", message="From android_notify").send()
         except Exception as err:
             md_view.value = f"❌ Notification error:\n{err}"
             md_view.update()

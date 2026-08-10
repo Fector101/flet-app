@@ -1,5 +1,5 @@
 import logging
-import os, traceback, unittest
+import os, sys, importlib, traceback, unittest
 import flet as ft
 
 from contextlib import redirect_stdout
@@ -91,12 +91,39 @@ def main(page: ft.Page):
     def run_tests(_):
         android_print('clicked')
         tests_path = ensure_tests_folder()
-        android_print(f"test folder: {tests_path}, Test File exists: {os.path.exists(os.path.join(tests_path,'test_android_notify_full.py'))}")
+        android_print(f"test folder: {tests_path}, Test File exists: {os.path.exists(os.path.join(tests_path,'test_android_notify_full.py')) or os.path.exists(os.path.join(tests_path,'test_android_notify_full.pyc'))}")
         try:
             android_print("running tests")
             with open(logs_path, "w") as logf, redirect_stdout(logf):
+                suite = unittest.TestSuite()
                 loader = unittest.TestLoader()
-                suite = loader.discover(start_dir=tests_path, pattern="test_*.py")
+
+                # 1. Standard discovery of source test files
+                try:
+                    discovered = loader.discover(start_dir=tests_path, pattern="test_*.py")
+                except Exception as err:
+                    android_print(f"discover .py failed: {err}")
+                    discovered = None
+                if discovered is not None:
+                    suite.addTests(discovered)
+
+                # 2. Fall back to compiled (.pyc) test modules when no source
+                #    tests were found (flet release builds compile app to .pyc)
+                if suite.countTestCases() == 0:
+                    android_print("No .py tests found, trying compiled .pyc modules")
+                    parent = os.path.dirname(tests_path)
+                    if parent not in sys.path:
+                        sys.path.insert(0, parent)
+                    pkg = os.path.basename(tests_path)
+                    for name in sorted(os.listdir(tests_path)):
+                        if name.startswith("test_") and name.endswith(".pyc"):
+                            module_name = f"{pkg}.{name[:-4]}"
+                            try:
+                                module = importlib.import_module(module_name)
+                                suite.addTests(loader.loadTestsFromModule(module))
+                            except Exception as err:
+                                android_print(f"import {module_name} failed: {err}")
+
                 android_print(f"Discovered tests: {suite.countTestCases()}")
 
                 if suite.countTestCases() == 0:

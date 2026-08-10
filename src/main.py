@@ -19,14 +19,7 @@ counter = 0
 logger.setLevel(logging.DEBUG)
 
 def main(page: ft.Page):
-    page.scroll = ft.ScrollMode.ADAPTIVE
     page.padding = 20
-
-    page.add(ft.Text(
-        "Android Notify Test Panel",
-        size=28,
-        weight=ft.FontWeight.BOLD,
-    ))
 
     # Path to log file
     try:
@@ -43,7 +36,6 @@ def main(page: ft.Page):
         on_tap_link=lambda e: page.launch_url(e.data),
         expand=True,
     )
-    page.add(md_view)
 
     # UTIL: Refresh console output
     def refresh_console(_):
@@ -76,7 +68,6 @@ def main(page: ft.Page):
             md_view.value = f"❌ Notification error:\n{err}"
             md_view.update()
 
-
     # Ensure tests folder (safe, auto-created)
     def ensure_tests_folder():
         try:
@@ -100,7 +91,7 @@ def main(page: ft.Page):
     def run_tests(_):
         android_print('clicked')
         tests_path = ensure_tests_folder()
-        android_print(f"test folder: {tests_path}, Test File exists: {os.path.exists(os.path.join(tests_path,"test_android_notify_full.py"))}")
+        android_print(f"test folder: {tests_path}, Test File exists: {os.path.exists(os.path.join(tests_path,'test_android_notify_full.py'))}")
         try:
             android_print("running tests")
             with open(logs_path, "w") as logf, redirect_stdout(logf):
@@ -135,16 +126,43 @@ def main(page: ft.Page):
             md_view.value = f"Error checking permission:\n{err}"
             md_view.update()
 
-    # Add buttons
     page.add(
-        ft.Column([
-            ft.OutlinedButton("Check Permission", on_click=check_permission),
-            ft.OutlinedButton("Ask Permission If Needed", on_click=lambda _: asks_permission_if_needed()),
-            ft.OutlinedButton("Send Basic Notification", on_click=send_basic),
-            ft.OutlinedButton("Run Tests", on_click=run_tests),
-            ft.OutlinedButton("Refresh Log Output", on_click=refresh_console),
-        ], expand=False)
+        ft.SafeArea(
+            content=ft.Column(
+                controls=[
+                    ft.Text(
+                        "Android Notify Test Panel",
+                        size=28,
+                        weight=ft.FontWeight.BOLD,
+                    ),
+                    md_view,
+                    ft.Button(
+                        content="Check Permission",
+                        on_click=check_permission,
+                    ),
+                    ft.Button(
+                        content="Ask Permission If Needed",
+                        on_click=lambda _: asks_permission_if_needed(),
+                    ),
+                    ft.Button(
+                        content="Send Basic Notification",
+                        on_click=send_basic,
+                    ),
+                    ft.Button(
+                        content="Run Tests",
+                        on_click=run_tests,
+                    ),
+                    ft.Button(
+                        content="Refresh Log Output",
+                        on_click=refresh_console,
+                    ),
+                ],
+                scroll=ft.ScrollMode.ADAPTIVE,
+                expand=True,
+            )
+        ),
     )
 
 
-ft.run(main)
+if __name__ == "__main__":
+    ft.run(main)

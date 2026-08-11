@@ -8,16 +8,16 @@ authors = [
     { name = "Flet developer", email = "you@example.com" }
 ]
 dependencies = [
-    "flet==0.86.5", "pyjnius", "android-notify",
+    "flet>=0.80.5", "pyjnius", "android-notify",
     "certifi>=2025.6.15",
     "requests"
 ]
 
 [dependency-groups]
 dev = [
-    "flet-cli==0.86.5",
-    "flet-desktop-light==0.86.5",
-    "flet-web==0.86.5",
+    "flet-cli>=0.80.5",
+    "flet-desktop-light>=0.80.5",
+    "flet-web>=0.80.5",
 ]
 
 [tool.flet]

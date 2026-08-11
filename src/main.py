@@ -1,5 +1,5 @@
 import logging
-import os, traceback, unittest
+import os, sys, importlib, traceback, unittest
 import flet as ft
 
 from contextlib import redirect_stdout
@@ -19,14 +19,7 @@ counter = 0
 logger.setLevel(logging.DEBUG)
 
 def main(page: ft.Page):
-    page.scroll = ft.ScrollMode.ADAPTIVE
     page.padding = 20
-
-    page.add(ft.Text(
-        "Android Notify Test Panel",
-        size=28,
-        weight=ft.FontWeight.BOLD,
-    ))
 
     # Path to log file
     try:
@@ -43,7 +36,6 @@ def main(page: ft.Page):
         on_tap_link=lambda e: page.launch_url(e.data),
         expand=True,
     )
-    page.add(md_view)
 
     # UTIL: Refresh console output
     def refresh_console(_):
@@ -76,7 +68,6 @@ def main(page: ft.Page):
             md_view.value = f"❌ Notification error:\n{err}"
             md_view.update()
 
-
     # Ensure tests folder (safe, auto-created)
     def ensure_tests_folder():
         try:
@@ -85,12 +76,12 @@ def main(page: ft.Page):
             android_print(error_getting_app_root_path)
             base_path = os.path.dirname(__file__)
 
-        tests_path = os.path.join(base_path, "tests")
+        tests_path = os.path.join(base_path, "test_suite")
         os.makedirs(tests_path, exist_ok=True)
 
         init_file = os.path.join(tests_path, "__init__.py")
         if not os.path.exists(init_file):
-            android_print("No tests.__init__ file")
+            android_print("No test_suite.__init__ file")
             with open(init_file, "w") as f:
                 f.write("")     # create empty file
 
@@ -100,12 +91,39 @@ def main(page: ft.Page):
     def run_tests(_):
         android_print('clicked')
         tests_path = ensure_tests_folder()
-        android_print(f"test folder: {tests_path}, Test File exists: {os.path.exists(os.path.join(tests_path,"test_android_notify_full.py"))}")
+        android_print(f"test folder: {tests_path}, Test File exists: {os.path.exists(os.path.join(tests_path,'test_android_notify_full.py')) or os.path.exists(os.path.join(tests_path,'test_android_notify_full.pyc'))}")
         try:
             android_print("running tests")
             with open(logs_path, "w") as logf, redirect_stdout(logf):
+                suite = unittest.TestSuite()
                 loader = unittest.TestLoader()
-                suite = loader.discover(start_dir=tests_path, pattern="test_*.py")
+
+                # 1. Standard discovery of source test files
+                try:
+                    discovered = loader.discover(start_dir=tests_path, pattern="test_*.py")
+                except Exception as err:
+                    android_print(f"discover .py failed: {err}")
+                    discovered = None
+                if discovered is not None:
+                    suite.addTests(discovered)
+
+                # 2. Fall back to compiled (.pyc) test modules when no source
+                #    tests were found (flet release builds compile app to .pyc)
+                if suite.countTestCases() == 0:
+                    android_print("No .py tests found, trying compiled .pyc modules")
+                    parent = os.path.dirname(tests_path)
+                    if parent not in sys.path:
+                        sys.path.insert(0, parent)
+                    pkg = os.path.basename(tests_path)
+                    for name in sorted(os.listdir(tests_path)):
+                        if name.startswith("test_") and name.endswith(".pyc"):
+                            module_name = f"{pkg}.{name[:-4]}"
+                            try:
+                                module = importlib.import_module(module_name)
+                                suite.addTests(loader.loadTestsFromModule(module))
+                            except Exception as err:
+                                android_print(f"import {module_name} failed: {err}")
+
                 android_print(f"Discovered tests: {suite.countTestCases()}")
 
                 if suite.countTestCases() == 0:
@@ -135,16 +153,43 @@ def main(page: ft.Page):
             md_view.value = f"Error checking permission:\n{err}"
             md_view.update()
 
-    # Add buttons
     page.add(
-        ft.Column([
-            ft.OutlinedButton("Check Permission", on_click=check_permission),
-            ft.OutlinedButton("Ask Permission If Needed", on_click=lambda _: asks_permission_if_needed()),
-            ft.OutlinedButton("Send Basic Notification", on_click=send_basic),
-            ft.OutlinedButton("Run Tests", on_click=run_tests),
-            ft.OutlinedButton("Refresh Log Output", on_click=refresh_console),
-        ], expand=False)
+        ft.SafeArea(
+            content=ft.Column(
+                controls=[
+                    ft.Text(
+                        "Android Notify Test Panel",
+                        size=28,
+                        weight=ft.FontWeight.BOLD,
+                    ),
+                    md_view,
+                    ft.Button(
+                        content="Check Permission",
+                        on_click=check_permission,
+                    ),
+                    ft.Button(
+                        content="Ask Permission If Needed",
+                        on_click=lambda _: asks_permission_if_needed(),
+                    ),
+                    ft.Button(
+                        content="Send Basic Notification",
+                        on_click=send_basic,
+                    ),
+                    ft.Button(
+                        content="Run Tests",
+                        on_click=run_tests,
+                    ),
+                    ft.Button(
+                        content="Refresh Log Output",
+                        on_click=refresh_console,
+                    ),
+                ],
+                scroll=ft.ScrollMode.ADAPTIVE,
+                expand=True,
+            )
+        ),
     )
 
 
-ft.run(main)
+if __name__ == "__main__":
+    ft.run(main)

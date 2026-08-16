@@ -76,12 +76,12 @@ def main(page: ft.Page):
             android_print(error_getting_app_root_path)
             base_path = os.path.dirname(__file__)
 
-        tests_path = os.path.join(base_path, "test_suite")
+        tests_path = os.path.join(base_path, "tests")
         os.makedirs(tests_path, exist_ok=True)
 
         init_file = os.path.join(tests_path, "__init__.py")
         if not os.path.exists(init_file):
-            android_print("No test_suite.__init__ file")
+            android_print("No tests.__init__ file")
             with open(init_file, "w") as f:
                 f.write("")     # create empty file
 

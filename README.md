@@ -6,27 +6,42 @@ A Flet-based Android app for testing the [android-notify](https://github.com/Fec
 
 Download the latest APK from the [Releases](../../releases) page and install it on your Android device.
 
-## Contains
+## App Sections
 
-| Notification Style | Description |
+### Home
+- Permission status indicator
+- Send a basic notification
+- Request notification permission
+- Cancel all active notifications
+
+### Styles
+Test every notification style the library supports:
+
+| Style | What it does |
 |---|---|
-| Simple | Basic title + message notification |
-| Progress | Progress bar with live updates |
-| Big Picture | Notification with a large image |
-| Big Text | Expanded long-text notification |
-| Inbox | Multi-line inbox-style notification |
-| Large Icon | Notification with a large icon image |
-| Action Buttons | Notification with tap action buttons |
-| Custom Icon | Notification with a custom small icon |
-| Channels | Create and target specific notification channels |
-| Persistent | Notifications that persist until dismissed |
-| Update Title/Message | Modify a notification after sending |
-| Cancel All | Dismiss all active notifications |
+| Simple | Basic title + message |
+| Progress | Live progress bar with updates |
+| Big Text | Expandable long text block |
+| Big Picture | Large image preview |
+| Large Icon | Right-side icon image |
+| Inbox | Multi-line list style |
+| Buttons | Action buttons below content |
+| Persistent | Survives clear-all |
+| Update Title/Msg | Modify title and message after sending |
+<!-- | Custom Colors | Colored title and body text | -->
 
+### Channels
+- Create and send notifications on custom channels
+- Check if a channel exists
+- List all active channels
+
+### Tests
+- Run the full on-device unittest suite
+- View test output in a scrollable log viewer
 
 ## Permissions
 
-The app requests `POST_NOTIFICATIONS` at runtime on Android 13+. Use the **Ask Permission If Needed** button in the app to trigger the system prompt.
+The app requests `POST_NOTIFICATIONS` at runtime on Android 13+. The Home tab shows permission status with a green/red indicator.
 
 ## Build locally
 
@@ -38,12 +53,8 @@ flet build apk
 # APK output: build/apk/antest_demo.apk
 ```
 
-## Run tests on device
-
-The app includes an on-device test suite. Tap **Run Tests** in the app to execute the notification test cases and view results in the log viewer.
-
 ## Tech Stack
 
-- [Flet](https://flet.dev) - UI framework
+- [Flet](https://flet.dev) - UI framework (NavigationBar, Cards, Snackbar)
 - [android-notify](https://github.com/Fector101/android_notify) - Android notification library
 - Python 3.14 bundled in release builds

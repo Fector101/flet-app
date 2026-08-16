@@ -4,11 +4,10 @@ import flet as ft
 
 from contextlib import redirect_stdout
 
-from android_notify.config import on_android_platform
+from android_notify.config import on_android_platform, __version__
 from android_notify.core import get_app_root_path, asks_permission_if_needed
 from android_notify import Notification
 from android_notify.internal.logger import android_print, logger
-from android_notify.config import __version__
 
 logger.setLevel(logging.DEBUG)
 
@@ -389,6 +388,7 @@ def main(page: ft.Page):
             except Exception as e:
                 test_log.value = f"```\n{traceback.format_exc()}\n```"
 
+            test_log.update()
             status_text.value = "Done"
             progress.visible = False
             status_text.update()

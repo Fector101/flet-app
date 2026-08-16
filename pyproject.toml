@@ -8,7 +8,7 @@ authors = [
     { name = "Flet developer", email = "you@example.com" }
 ]
 dependencies = [
-    "flet>=0.80.5", "pyjnius", "android-notify",
+    "flet>=0.80.5", "pyjnius", "android-notify @ https://github.com/Fector101/android_notify/archive/refs/heads/lazy-imports.zip",
     "certifi>=2025.6.15",
     "requests"
 ]

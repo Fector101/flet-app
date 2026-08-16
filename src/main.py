@@ -3,10 +3,10 @@ import os, sys, importlib, traceback, unittest
 import flet as ft
 
 from contextlib import redirect_stdout
+from android_notify import Notification, NotificationHandler
 
 from android_notify.config import on_android_platform, __version__
 from android_notify.core import get_app_root_path, asks_permission_if_needed
-from android_notify import Notification
 from android_notify.internal.logger import android_print, logger
 
 logger.setLevel(logging.DEBUG)
@@ -44,7 +44,6 @@ def main(page: ft.Page):
         snack.update()
 
     def badge_row():
-        from android_notify import NotificationHandler
         has = NotificationHandler.has_permission()
         return ft.Row(
             [
@@ -224,7 +223,7 @@ def main(page: ft.Page):
             ("Large Icon", "Right-side icon image", ft.Icons.INSERT_PHOTO, s_large_icon),
             ("Inbox", "Multi-line list style", ft.Icons.INBOX, s_inbox),
             ("Buttons", "Action buttons below", ft.Icons.SMART_BUTTON, s_buttons),
-            ("Persistent", "Survives clear-all", ft.Icons.LOCK, s_persistent),
+            ("Persistent", 'Survives "users" clear-all', ft.Icons.LOCK, s_persistent),
             ("Update Title/Msg", "Modify after sending", ft.Icons.EDIT, s_update),
             ("Custom Colors", "Colored title and body", ft.Icons.PALETTE, s_custom_color),
         ]
